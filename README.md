@@ -174,5 +174,5 @@ técnico do autor, não simplesmente absorvidas.
 
 ## Autor
 
-[Seu nome]
-[LinkedIn ou contato profissional, se quiser]
+Fernando Rocha
+Analista de BI
