@@ -34,157 +34,178 @@ A proposta consiste em construir uma estrutura analítica exploratória capaz de
 
 ---
 
-# 3. Fontes de Dados
+# 3. Tipologia Conceitual de Invisibilidade ao SFN
 
-| Fonte                         | Finalidade                                                  |
-| ----------------------------- | ----------------------------------------------------------- |
-| PNAD Contínua (IBGE)          | Perfil socioeconômico individual                            |
-| Censo Demográfico (IBGE)      | Estrutura domiciliar, territorial e características urbanas |
-| ESTBAN (Banco Central)        | Profundidade financeira regional                            |
-| Banco Central do Brasil (BCB) | Indicadores econômicos, monetários e financeiros            |
-| IBGE                          | Indicadores territoriais e demográficos complementares      |
-| IPEAData                      | Indicadores econômicos complementares                       |
+A partir da Sessão 2 (EDA), foi formalizada uma distinção conceitual que orienta o escopo prioritário do projeto.
+
+## 3.1 Três status frequentemente confundidos
+
+| Status | Significado |
+| ------ | ----------- |
+| Bancarizado | Tem relação transacional com banco (conta, cartão, recebimento) |
+| Com crédito calculado | Banco já avaliou risco e ofereceu ou pré-aprovou limite |
+| Tomador de crédito | De fato utiliza crédito (cheque especial, parcelado, financiamento) |
+
+Cada status é subconjunto do anterior, mas a relação não é trivial. É possível ter alto crédito disponível e não tomar — não por incapacidade, mas por administração financeira disciplinada. Esse perfil é frequentemente classificado como thin file por modelos tradicionais, mas o sistema já o enxerga.
+
+## 3.2 Dois tipos de invisibilidade
+
+* **Invisível estrutural — alvo prioritário do projeto:** pessoa ainda não analisada pelo sistema financeiro. Não tem score, não tem crédito calculado, não recebeu oferta. Representa lacuna real de inclusão financeira.
+
+* **Invisível por escolha — fora do alvo prioritário:** pessoa com crédito disponível que não toma. Aparece em modelos tradicionais como ausência de histórico, mas o sistema já a enxerga e atende comercialmente.
+
+A distinção é central para o entregável final: o projeto busca **descoberta de população nova**, não caça a clientes já existentes no radar do SFN.
+
+## 3.3 Tratamento dos perfis fora do alvo nos dados
+
+Os perfis invisíveis por escolha (tipicamente profissionais qualificados informais capitalizados — médicos PJ, advogados autônomos, consultores) são mantidos na base por honestidade analítica. Na clusterização (Sessão 4), receberão rotulagem explícita como "fora do alvo prioritário", permitindo isolá-los analiticamente sem contaminação dos clusters principais.
 
 ---
 
-# 4. Unidade Analítica
+# 4. Fontes de Dados
 
-A unidade primária de análise do modelo é o indivíduo respondente da PNAD Contínua.
+| Fonte | Finalidade | Sessão de entrada |
+| ----- | ---------- | ----------------- |
+| PNAD Contínua (IBGE) | Perfil socioeconômico individual — base primária | Sessão 1 |
+| IPCA (IBGE/IPEAData) | Deflator monetário para harmonização temporal | Sessão 3 |
+| ESTBAN (Banco Central) | Profundidade financeira regional por município | Sessão 5 |
+| Censo Demográfico (IBGE) | Patrimônio domiciliar, infraestrutura urbana | Sessão 5 |
+| Indicadores BCB (Selic, IPCA, expectativas, IDF) | Contexto macroeconômico para storytelling | Sessão 6 |
 
-As análises territoriais posteriores serão realizadas em nível agregado, priorizando agrupamentos regionais estatisticamente mais robustos e operacionalmente mais interpretáveis, como:
+**Compatibilidade territorial:** ESTBAN, PNAD e Censo compartilham o código IBGE de município como chave primária. A integração será feita por agregação ascendente do ESTBAN (granularidade municipal) para o nível analítico da PNAD (UF + RM/RIDE + recorte urbano/rural).
+
+---
+
+# 5. Unidade Analítica
+
+A unidade primária de análise é o **respondente individual** da PNAD Contínua, mas a unidade operacional do modelo (após agregação da view base) é a **célula-perfil**: combinação única de variáveis categóricas no GROUP BY da view, com pelo menos 30 respondentes.
+
+As análises territoriais posteriores serão realizadas em nível agregado:
 
 * Regiões Metropolitanas (RMs);
 * RIDEs;
-* macrorregiões geográficas;
-* recortes urbano/rural.
+* Macrorregiões geográficas;
+* Recortes urbano/rural.
 
-Essa abordagem busca equilibrar:
-
-* granularidade analítica;
-* robustez estatística;
-* viabilidade operacional;
-* interpretabilidade executiva.
-
-Em etapas posteriores, dados estruturais do Censo IBGE poderão complementar as análises territoriais, especialmente em dimensões relacionadas à infraestrutura urbana, densidade domiciliar e características socioespaciais.
+Essa abordagem equilibra granularidade, robustez estatística e interpretabilidade executiva.
 
 ---
 
-# 5. Recorte Populacional
+# 6. Recorte Populacional
 
 O modelo concentra-se em segmentos da população economicamente ativa com menor inserção formal no sistema tradicional de crédito.
 
-Foram priorizados:
+**Incluídos:**
 
-* trabalhadores por conta própria;
-* empregados sem carteira assinada;
-* empregados domésticos sem carteira;
-* empregados públicos sem vínculo formal;
-* trabalhadores familiares auxiliares.
+* Trabalhadores autônomos;
+* Empregados sem carteira assinada;
+* Empregados domésticos sem carteira;
+* Empregados públicos sem vínculo formal;
+* Trabalhadores familiares auxiliares.
 
-Foram excluídos segmentos com maior estabilidade institucional e maior acesso histórico ao crédito formal, como:
+**Excluídos:**
 
-* empregados com carteira assinada;
-* servidores estatutários;
-* militares.
+* Empregados com carteira assinada;
+* Servidores estatutários;
+* Militares.
+
+O filtro de escopo populacional vive na view base (`WHERE VD4009 IN ('2', '4', '6', '9', '10')`), garantindo consistência em todas as análises descendentes.
 
 ---
 
-# 6. Arquitetura Conceitual do Modelo
+# 7. Arquitetura Conceitual do Score Composto
 
-O modelo assume que o potencial de estabilidade financeira possui natureza multidimensional.
+O modelo assume que o potencial de estabilidade financeira possui natureza multidimensional. O score composto é estruturado em quatro subíndices conceituais independentes, mais interpretáveis e modulares do que uma abordagem monolítica.
 
-Dessa forma, o score composto será estruturado a partir de subíndices conceituais independentes, cada um representando dimensões específicas do comportamento socioeconômico observado.
+## 7.1 Subíndice de Estabilidade Econômica
 
-## 6.1 Subíndice de Estabilidade Econômica
-
-Objetivo:
-avaliar previsibilidade ocupacional e estabilidade de geração de renda.
+Objetivo: avaliar previsibilidade ocupacional e estabilidade de geração de renda.
 
 Variáveis associadas:
 
-* tempo no trabalho atual;
-* volatilidade relativa da renda;
-* horas habitualmente trabalhadas.
+* `tempo_no_trabalho`;
+* `cv_renda_efetiva` (coeficiente de variação intra-célula — volatilidade verdadeira);
+* `media_horas_trabalhadas`;
+* `desvio_relativo_renda_pct` (sinal conjuntural complementar — gap entre renda habitual e efetiva).
 
-Hipótese econômica:
-maior estabilidade ocupacional e menor volatilidade tendem a indicar maior previsibilidade financeira mesmo em contextos de informalidade.
+Hipótese econômica: maior estabilidade ocupacional e menor volatilidade tendem a indicar maior previsibilidade financeira mesmo em contextos de informalidade.
 
----
+## 7.2 Subíndice de Capacidade Financeira
 
-## 6.2 Subíndice de Capacidade Financeira
-
-Objetivo:
-estimar potencial de geração de renda e capacidade econômica estrutural.
+Objetivo: estimar potencial de geração de renda e capacidade econômica estrutural.
 
 Variáveis associadas:
 
-* renda habitual;
-* renda efetiva;
-* escolaridade;
-* grupamento de atividade econômica.
+* `renda_media_habitual`;
+* `renda_media_efetiva`;
+* `escolaridade`;
+* `grupamento_atividade` (dimensão padrão a partir da Sessão 2).
 
-Hipótese econômica:
-maior capital humano e maior capacidade recorrente de geração de renda tendem a indicar maior potencial de relacionamento financeiro sustentável.
+Hipótese econômica: maior capital humano e maior capacidade recorrente de geração de renda tendem a indicar maior potencial de relacionamento financeiro sustentável.
 
-Observação metodológica:
-as variáveis monetárias utilizadas no modelo serão deflacionadas previamente para garantir comparabilidade temporal e evitar distorções inflacionárias nas análises estatísticas e nos indicadores derivados.
+Observação metodológica: as variáveis monetárias serão deflacionadas previamente (Sessão 3) para garantir comparabilidade temporal e evitar distorções inflacionárias.
 
----
+## 7.3 Subíndice de Vulnerabilidade Familiar
 
-## 6.3 Subíndice de Vulnerabilidade Familiar
-
-Objetivo:
-identificar possíveis pressões estruturais sobre orçamento e capacidade financeira.
+Objetivo: identificar pressões estruturais sobre orçamento e capacidade financeira.
 
 Variáveis associadas:
 
-* média de moradores no domicílio;
-* média de filhos;
-* características domiciliares agregadas derivadas do Censo IBGE (etapas futuras).
+* `media_moradores_domicilio`;
+* `media_filhos`;
+* Características domiciliares agregadas do Censo IBGE (Sessão 5).
 
-Hipótese econômica:
-maior pressão domiciliar pode reduzir capacidade de poupança, estabilidade financeira e margem de absorção de choques econômicos.
+Hipótese econômica: maior pressão domiciliar pode reduzir capacidade de poupança, estabilidade financeira e margem de absorção de choques.
 
----
+## 7.4 Subíndice de Maturidade Socioeconômica
 
-## 6.4 Subíndice de Maturidade Socioeconômica
-
-Objetivo:
-representar estágio de consolidação econômica e ocupacional do indivíduo.
+Objetivo: representar estágio de consolidação econômica e ocupacional.
 
 Variáveis associadas:
 
-* faixa etária;
-* posição na ocupação;
-* condição do domicílio.
+* `faixa_etaria`;
+* `posicao_ocupacao`;
+* `posicao_no_domicilio`;
+* Proxy de patrimônio imobiliário via Censo (Sessão 5).
 
-Hipótese econômica:
-indivíduos em estágios mais maduros de consolidação profissional e patrimonial tendem a apresentar maior estabilidade financeira potencial.
-
----
-
-# 7. Pipeline Analítico
-
-O fluxo metodológico do projeto será estruturado nas seguintes etapas:
-
-1. Estruturação e consolidação dos microdados;
-2. Limpeza e tratamento estatístico;
-3. Construção das variáveis derivadas;
-4. Deflacionamento das variáveis monetárias e harmonização temporal das rendas;
-5. Integração territorial com bases do Censo IBGE;
-6. Padronização estatística das métricas;
-7. Construção dos subíndices socioeconômicos;
-8. Consolidação do score composto;
-9. Redução dimensional via PCA;
-10. Clusterização dos perfis socioeconômicos;
-11. Territorialização dos clusters;
-12. Desenvolvimento dos dashboards analíticos.
-
-A etapa de deflacionamento será realizada após a construção das variáveis derivadas e antes da padronização estatística, garantindo consistência temporal das métricas financeiras utilizadas no modelo.
+Hipótese econômica: indivíduos em estágios mais maduros de consolidação profissional e patrimonial tendem a apresentar maior estabilidade financeira potencial.
 
 ---
 
-# 8. Estratégia Estatística
+# 8. Dimensão Transversal — Grupamento de Atividade
+
+A partir da Sessão 2, `grupamento_atividade` foi promovido a **dimensão analítica padrão**, ao lado de `posicao_ocupacao`. A decisão decorre de achado empírico: a agricultura (que atravessa todas as categorias ocupacionais e representa 77–84% de Autônomos) é o principal puxador de heterogeneidade intra-célula no escopo do projeto.
+
+Tratar `grupamento_atividade` como dimensão padrão:
+
+* Diferencia realidades econômicas dentro da mesma categoria ocupacional;
+* Mantém tratamento simétrico entre os 5 segmentos do escopo;
+* Evita criar segmentos artificiais (como subdivisões por renda, que seriam circulares);
+* Preserva interpretabilidade da clusterização.
+
+---
+
+# 9. Pipeline Analítico
+
+Fluxo metodológico do projeto:
+
+1. Estruturação e consolidação dos microdados (Sessão 1)
+2. Limpeza e tratamento estatístico (Sessão 1)
+3. Construção das variáveis derivadas (Sessão 1)
+4. Análise exploratória (Sessão 2)
+5. Deflacionamento das variáveis monetárias e harmonização temporal (Sessão 3)
+6. Padronização estatística — z-score com truncamento (Sessão 4)
+7. Construção dos subíndices socioeconômicos (Sessão 4)
+8. Consolidação do score composto (Sessão 4)
+9. Redução dimensional via PCA (Sessão 4)
+10. Clusterização dos perfis socioeconômicos (Sessão 4)
+11. Integração territorial com Censo IBGE e ESTBAN (Sessão 5)
+12. Territorialização dos clusters (Sessão 5)
+13. Desenvolvimento dos dashboards e storytelling executivo (Sessão 6)
+
+---
+
+# 10. Estratégia Estatística
 
 O modelo utilizará técnicas de redução dimensional, especialmente Principal Component Analysis (PCA), com os seguintes objetivos:
 
@@ -195,52 +216,61 @@ O modelo utilizará técnicas de redução dimensional, especialmente Principal 
 * reduzir ruído estatístico;
 * melhorar a eficiência das etapas de clusterização.
 
-O PCA será utilizado como mecanismo complementar de validação estatística, preservando a interpretabilidade econômica das dimensões conceituais originalmente definidas.
+O PCA será utilizado como mecanismo complementar de validação estatística, **preservando a interpretabilidade econômica das dimensões conceituais originalmente definidas**.
 
-Adicionalmente, o tratamento temporal das variáveis monetárias por meio de deflacionamento busca reduzir vieses inflacionários que poderiam comprometer a comparabilidade estatística entre períodos distintos da PNAD Contínua.
-
-A incorporação futura de variáveis territoriais derivadas do Censo IBGE poderá ampliar a capacidade explicativa dos componentes espaciais e socioeconômicos do modelo.
+**Princípio de proporcionalidade adotado:** a sofisticação metodológica deve ser proporcional ao objetivo do projeto (mapeamento de perfis e regiões, não scoring individual) e ao público do entregável final (gerentes de áreas não-técnicas). Decisões metodológicas privilegiam explicabilidade sobre rigor estatístico marginal sempre que o ganho de informação não justifica o custo de comunicação.
 
 ---
 
-# 9. Estratégia de Clusterização
+# 11. Estratégia de Clusterização
 
-Após a consolidação dos componentes socioeconômicos, serão aplicadas técnicas de clusterização não supervisionada para identificação de grupos populacionais com características semelhantes.
+Após a consolidação dos componentes socioeconômicos, serão aplicadas técnicas de clusterização não supervisionada.
 
-A clusterização tem como objetivos:
+Objetivos:
 
 * identificar perfis latentes de estabilidade financeira;
 * segmentar grupos thin file heterogêneos;
 * identificar padrões socioeconômicos recorrentes;
 * apoiar análises de inclusão financeira;
-* permitir leituras territoriais agregadas.
+* permitir leituras territoriais agregadas;
+* **isolar analiticamente o perfil "invisível por escolha"** (alta renda informal capitalizada) para que não contamine os clusters principais.
 
-Inicialmente será utilizada a técnica K-Means, podendo posteriormente ser avaliadas abordagens hierárquicas ou baseadas em densidade.
+Técnica inicialmente prevista: K-Means. Podem ser avaliadas posteriormente abordagens hierárquicas ou baseadas em densidade.
+
+**Atenção metodológica:** Autônomos representam ~67% do escopo. A clusterização precisa garantir que o peso dessa categoria não dilua a especificidade dos perfis menores (familiar auxiliar, empregado público sem carteira).
 
 ---
 
-# 10. Estratégia Territorial
+# 12. Estratégia Territorial
 
 As análises territoriais buscarão identificar padrões regionais de concentração dos clusters socioeconômicos.
 
-Em vez de granularidade municipal extrema, serão priorizados agrupamentos territoriais mais robustos estatisticamente e mais aderentes à proposta executiva do projeto, como:
+Serão priorizados agrupamentos mais robustos estatisticamente e mais aderentes à proposta executiva do projeto:
 
 * Regiões Metropolitanas (RMs);
 * RIDEs;
-* macrorregiões geográficas;
-* recortes urbano/rural.
+* Macrorregiões geográficas;
+* Recortes urbano/rural.
 
-A territorialização terá caráter complementar à segmentação socioeconômica, buscando identificar possíveis bolsões regionais de baixa profundidade financeira e elevado potencial de inclusão bancária.
+A territorialização tem caráter complementar à segmentação socioeconômica, buscando identificar **regiões com perfis bons + baixa profundidade do sistema financeiro** — combinação onde mora a lacuna real de inclusão.
 
-A estratégia territorial também prevê integração futura entre dados do ESTBAN e informações estruturais do Censo IBGE, permitindo análises de geointeligência voltadas à relação entre infraestrutura urbana, densidade populacional e profundidade financeira regional.
+**Compatibilidade entre fontes (verificada na Sessão 2):**
+
+| Fonte | Granularidade nativa | Granularidade útil para o projeto |
+| ----- | -------------------- | --------------------------------- |
+| PNAD | UF + área | UF + RM/RIDE + área |
+| ESTBAN | Município (cód. IBGE) | Agregado para RM/UF |
+| Censo | Setor censitário | Agregado para RM/UF |
+
+Todas as fontes usam código IBGE de município como chave primária. Integração será feita por agregação ascendente.
 
 ---
 
-# 11. Limitações do Modelo
+# 13. Limitações do Modelo
 
 O modelo possui natureza exploratória e não pretende representar mecanismo formal de concessão de crédito.
 
-As inferências realizadas baseiam-se exclusivamente em proxies socioeconômicas derivadas de dados públicos, não contemplando:
+As inferências baseiam-se exclusivamente em proxies socioeconômicas derivadas de dados públicos, não contemplando:
 
 * histórico bancário individual;
 * comportamento transacional;
@@ -248,26 +278,28 @@ As inferências realizadas baseiam-se exclusivamente em proxies socioeconômicas
 * informações protegidas por sigilo financeiro;
 * modelos proprietários de risco de crédito.
 
-Os resultados devem ser interpretados como instrumento analítico de segmentação e inteligência socioeconômica.
+Os resultados devem ser interpretados como instrumento analítico de segmentação e inteligência socioeconômica, não como mecanismo de scoring.
 
 ---
 
-# 12. Próximas Etapas
+# 14. Próximas Etapas
 
-| Etapa                                               | Status    |
-| --------------------------------------------------- | --------- |
-| EDA aprofundada                                     | Próxima   |
-| Deflacionamento e harmonização temporal             | Planejada |
-| PCA                                                 | Planejada |
-| Clusterização                                       | Planejada |
-| Geointeligência: integração com ESTBAN e Censo IBGE | Planejada |
-| Integração de indicadores do Banco Central          | Planejada |
-| Dashboard Power BI                                  | Planejada |
-| Storytelling executivo                              | Planejado |
+| Etapa | Status |
+| ----- | ------ |
+| EDA aprofundada | ✅ Concluída (Sessão 2) |
+| Deflacionamento e harmonização temporal | 🔜 Próxima (Sessão 3) |
+| Padronização e construção dos subíndices | Planejada (Sessão 4) |
+| Consolidação do score composto | Planejada (Sessão 4) |
+| PCA | Planejada (Sessão 4) |
+| Clusterização | Planejada (Sessão 4) |
+| Integração com ESTBAN e Censo IBGE | Planejada (Sessão 5) |
+| Territorialização dos clusters | Planejada (Sessão 5) |
+| Dashboard Power BI | Planejada (Sessão 6) |
+| Storytelling executivo | Planejado (Sessão 6) |
 
 ---
 
-# 13. Considerações Finais
+# 15. Considerações Finais
 
 O projeto busca combinar:
 
@@ -275,13 +307,19 @@ O projeto busca combinar:
 * análise territorial;
 * técnicas estatísticas;
 * segmentação analítica;
-* e dados públicos de larga escala,
+* dados públicos de larga escala,
 
-com o objetivo de explorar potenciais lacunas de inclusão financeira no Brasil.
+com o objetivo de explorar lacunas reais de inclusão financeira no Brasil — entendidas não como ausência genérica de histórico de crédito, mas como **invisibilidade estrutural ao sistema financeiro**.
 
-A proposta procura equilibrar:
+A proposta busca equilibrar:
 
 * robustez metodológica;
 * interpretabilidade executiva;
 * viabilidade operacional;
-* e aderência ao contexto do Sistema Financeiro Nacional.
+* aderência ao contexto do Sistema Financeiro Nacional;
+* honestidade analítica na separação entre o que o sistema **ainda não viu** e o que o sistema **viu e não atende**.
+
+---
+
+*Documento de arquitetura — atualizado ao final da Sessão 2.*
+*Reflete decisões metodológicas consolidadas; o histórico das discussões críticas está registrado no changelog do projeto.*
