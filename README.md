@@ -174,5 +174,5 @@ técnico do autor, não simplesmente absorvidas.
 
 ## Autor
 
-Fernando Rocha
+Fernando Rocha dos Santos, 
 Analista de BI
