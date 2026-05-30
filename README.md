@@ -69,8 +69,8 @@ Fonte primária: **PNAD Contínua (IBGE), microdados 2021–2025**.
 - **Python** *(previsto)* — PCA, K-Means e validações estatísticas
   (Sessão 4 em diante)
 
-Fontes complementares previstas: IPCA (IPEAData), ESTBAN (Banco Central),
-Censo Demográfico (IBGE).
+Fontes complementares: IPCA (IBGE/SIDRA tabela 1737, **já integrado**),
+ESTBAN (Banco Central) e Censo Demográfico (IBGE) *(previstos)*.
 
 ---
 
@@ -79,7 +79,7 @@ Censo Demográfico (IBGE).
 ```
 PNAD Contínua
   → Limpeza e variáveis derivadas
-  → Deflacionamento (IPCA)
+  → Deflacionamento (IPCA, base 2025)
   → Padronização (z-score com truncamento)
   → Subíndices socioeconômicos
   → Score composto
@@ -106,8 +106,8 @@ Score composto estruturado em quatro subíndices:
 |--------|-----------|--------|
 | 1 | Estruturação da base | ✅ Concluída |
 | 2 | EDA completa | ✅ Concluída |
-| 3 | Deflação pelo IPCA | 🔜 Próxima |
-| 4 | Construção do score | ⏳ Pendente |
+| 3 | Deflação pelo IPCA | ✅ Concluída |
+| 4 | Construção do score | 🔜 Próxima |
 | 5 | Geointeligência | ⏳ Pendente |
 | 6 | Visualização e entregável | ⏳ Pendente |
 
@@ -119,8 +119,8 @@ Score composto estruturado em quatro subíndices:
 |---------|----------|
 | `arquitetura_analitica_modelo.md` | Documento mestre — metodologia consolidada |
 | `changelog_integrado.md` | Diário de bordo — histórico completo de decisões |
-| `sql/` *(em construção)* | Scripts SQL: view base e queries da EDA |
-| `dados/` *(em construção)* | Outputs intermediários das análises |
+| `sql/` *(em construção)* | Scripts SQL: view base, queries da EDA, deflação |
+| `dados/` *(em construção)* | Outputs intermediários e tabelas auxiliares |
 
 Para entender **o que** o projeto faz e **como** está estruturado,
 comece pelo documento de arquitetura.
@@ -129,9 +129,9 @@ projeto chegou ao estado atual, consulte o changelog.
 
 ---
 
-## Achados Parciais (Sessão 2)
+## Achados Parciais
 
-Alguns resultados da análise exploratória que vale destacar:
+**Sessão 2 (EDA):**
 
 - **Trabalhadores autônomos representam ~67% do escopo**, com a
   agricultura concentrando 77–84% dessa categoria
@@ -143,6 +143,19 @@ Alguns resultados da análise exploratória que vale destacar:
 - Decisão metodológica decorrente: `grupamento_atividade` (setor
   econômico) tratado como **dimensão analítica padrão**, ao lado
   da posição na ocupação
+
+**Sessão 3 (Deflação):**
+
+- A deflação pelo IPCA (base 2025) **inverteu a leitura da evolução de
+  renda** de duas categorias que a análise nominal mascarava:
+  - **Trabalhador doméstico s/ carteira:** +21% nominal, mas **−3% real**
+    — estagnação disfarçada de crescimento
+  - **Empregado público s/ carteira:** −3% nominal, mas **−22% real**
+    — perda de quase ¼ do poder de compra em 4 anos
+- Autônomos (+20% real) e empregado privado s/ carteira (+17% real)
+  mantiveram ganho real sólido
+- Demonstra por que a harmonização temporal é etapa crítica, não cosmética:
+  sem deflacionar, perfis em precarização apareceriam como ascendentes
 
 ---
 
@@ -176,5 +189,5 @@ técnico do autor, não simplesmente absorvidas.
 
 ## Autor
 
-Fernando Rocha dos Santos  
+Fernando Rocha dos Santos
 Analista de BI
