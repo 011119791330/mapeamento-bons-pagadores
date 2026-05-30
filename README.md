@@ -1,5 +1,7 @@
 # Mapeamento de Bons Pagadores Fora do Radar do SFN
 
+![Social Preview](social_preview_mescla_light.png)
+
 > Identificação de perfis socioeconômicos com potencial de estabilidade
 > financeira que estão estruturalmente invisíveis ao Sistema Financeiro
 > Nacional brasileiro, a partir de dados públicos.
@@ -174,5 +176,5 @@ técnico do autor, não simplesmente absorvidas.
 
 ## Autor
 
-Fernando Rocha dos Santos, 
+Fernando Rocha dos Santos  
 Analista de BI
