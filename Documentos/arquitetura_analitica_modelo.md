@@ -18,6 +18,8 @@ O modelo pretende explorar padrões socioeconômicos capazes de indicar potencia
 
 Além da PNAD Contínua, o projeto prevê integração gradual com bases territoriais e estruturais do Censo Demográfico do IBGE, permitindo enriquecer análises espaciais, características domiciliares e padrões regionais de infraestrutura socioeconômica.
 
+**Reenquadramento de escopo (pré-Sessão 4):** embora o vocabulário histórico do projeto enfatize "crédito", o escopo conceitual é o **relacionamento financeiro em sentido amplo** — desde a porta de entrada (conta corrente, meio de pagamento, bancarização básica) até operações complexas (financiamento, capital de giro). A invisibilidade estrutural começa antes do crédito: na ausência de qualquer relação transacional com o SFN. O score socioeconômico é agnóstico ao produto financeiro de destino; o reenquadramento materializa-se na construção da profundidade financeira territorial como índice **multiproduto** (Sessão 5) e no storytelling executivo (Sessão 6), sem alterar base ou deflação.
+
 ---
 
 # 2. Objetivo Analítico
@@ -130,6 +132,8 @@ Variáveis associadas:
 
 Hipótese econômica: maior estabilidade ocupacional e menor volatilidade tendem a indicar maior previsibilidade financeira mesmo em contextos de informalidade.
 
+Distinção conceitual registrada (pré-Sessão 4): este subíndice mede **volatilidade observada** (dispersão num retrato, via CV) e **gap conjuntural** (via desvio relativo), mas não mede **risco sistemático** — exposição a choques externos correlacionados (macro, setorial, climático) que atingem uma classe inteira simultaneamente. Duas células com mesmo CV podem ter exposição externa distinta (autônomo agrícola vs. autônomo de comércio urbano). O risco sistemático não é incorporado como variável de score nesta etapa (série de 5 anos insuficiente para estimá-lo de forma defensável; princípio de proporcionalidade), mas (a) já se manifesta indiretamente via `grupamento_atividade` como dimensão padrão — a agricultura puxando o CV é sua assinatura nos dados; (b) será usado como **lente interpretativa** dos clusters; (c) fica registrado como evolução futura possível, mediante integração de fonte externa de volatilidade setorial.
+
 ## 7.2 Subíndice de Capacidade Financeira
 
 Objetivo: estimar potencial de geração de renda e capacidade econômica estrutural.
@@ -220,6 +224,12 @@ O PCA será utilizado como mecanismo complementar de validação estatística, *
 
 **Princípio de proporcionalidade adotado:** a sofisticação metodológica deve ser proporcional ao objetivo do projeto (mapeamento de perfis e regiões, não scoring individual) e ao público do entregável final (gerentes de áreas não-técnicas). Decisões metodológicas privilegiam explicabilidade sobre rigor estatístico marginal sempre que o ganho de informação não justifica o custo de comunicação.
 
+**Pesos do score (decisão pré-Sessão 4):** adotado o modelo **híbrido** como hipótese de trabalho — predominância dos pesos conceituais, PCA como mecanismo de ajuste na margem — em vez de pesos iguais (baseline de comparação) ou pesos integralmente derivados do PCA. Coerente com o princípio de proporcionalidade.
+
+**Gate de validação — score vs. proxy de renda (decisão pré-Sessão 4):** após consolidar o score composto, calcular a correlação de Pearson entre score e `renda_media_efetiva_real`. Correlação acima de ~0,8 sinaliza que o score degenerou em termômetro de renda (posição socioeconômica), não estabilidade — exigindo reponderação para baixo do subíndice de Capacidade Financeira. Diagnóstico obrigatório de honestidade analítica.
+
+**Balanceamento diagnóstico do PCA — "balanceamento virtual comparativo" (decisão pré-Sessão 4):** dado que autônomos são ~67% do escopo, os primeiros componentes principais podem refletir prioritariamente a variação interna dos autônomos (dominância estrutural), deixando os perfis menores projetados numa régua que não é a deles. Para diagnosticar — **sem alterar a base de produção** — o PCA é executado em dois cenários: (1) base real (proporções intactas; é a régua que segue no pipeline) e (2) cópia temporária e descartável balanceada por `posicao_ocupacao` (N igual por categoria, amostragem sem reposição). Comparam-se os *loadings* dos dois cenários: semelhantes → estrutura robusta/universal; muito diferentes → dominância confirmada (achado analítico, não defeito; pode motivar clusterização por estrato). Explicitamente **não** se adota oversampling, undersampling definitivo, SMOTE ou geração sintética — o balanceamento é exclusivamente diagnóstico. Ressalva: se a menor categoria tiver poucas células, considerar balancear até a segunda menor ou usar PCA estratificado, para evitar confundir dominância com efeito de tamanho amostral.
+
 ---
 
 # 11. Estratégia de Clusterização
@@ -238,6 +248,8 @@ Objetivos:
 Técnica inicialmente prevista: K-Means. Podem ser avaliadas posteriormente abordagens hierárquicas ou baseadas em densidade.
 
 **Atenção metodológica:** Autônomos representam ~67% do escopo. A clusterização precisa garantir que o peso dessa categoria não dilua a especificidade dos perfis menores (familiar auxiliar, empregado público sem carteira).
+
+**Dimensionamento dos clusters (decisão pré-Sessão 4):** após clusterizar, estimar a população potencial por cluster — a ponte entre o resultado analítico e a leitura executiva (tamanho de mercado, escala de iniciativas de inclusão). Requisito técnico: a view base hoje guarda `total_entrevistados` (contagem bruta de respondentes), não população expandida. O dimensionamento populacional correto exige a **soma dos pesos amostrais da PNAD** por célula (variável de peso com calibração de pós-estratificação). Ação prévia à clusterização: verificar se a `basedosdados` expõe a variável de peso e, em caso afirmativo, avaliar a adição de coluna de população expandida à base. Caso não exposta, documentar como limitação e dimensionar por contagem de respondentes (proxy mais grosseiro).
 
 ---
 
@@ -321,5 +333,5 @@ A proposta busca equilibrar:
 
 ---
 
-*Documento de arquitetura — atualizado ao final da Sessão 2.*
-*Reflete decisões metodológicas consolidadas; o histórico das discussões críticas está registrado no changelog do projeto.*
+*Documento de arquitetura — atualizado na pré-Sessão 4 (decisões metodológicas a partir de avaliação de nota técnica externa).*
+*Reflete decisões metodológicas consolidadas; o histórico das discussões críticas está registrado no changelog do projeto (ver seção Pré-Sessão 4).*

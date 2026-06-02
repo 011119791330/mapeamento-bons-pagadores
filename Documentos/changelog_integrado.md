@@ -670,5 +670,176 @@ deflação):
 
 ---
 
+## Pré-Sessão 4 — Discussão Metodológica (avaliação de nota técnica externa)
+**Status:** Decisões registradas; Sessão 4 ainda não iniciada
+
+Esta seção registra decisões tomadas a partir da avaliação crítica de uma
+nota técnica produzida com apoio do ChatGPT (`nota_tecnica_reflexoes_sessao_4.md`),
+discutida antes da abertura formal da Sessão 4. A nota foi majoritariamente
+**convergente** com a arquitetura já consolidada; os pontos abaixo são os que
+geraram decisão nova ou refinamento.
+
+### P4.1 Gate de validação — score vs. proxy de renda
+
+Risco identificado na nota: renda, escolaridade, posição ocupacional e
+maturidade são empiricamente correlacionadas; mesmo com subíndices
+conceitualmente separados, o score composto pode acabar medindo
+essencialmente **posição socioeconômica** (capacidade), não estabilidade.
+
+*Decisão:* incorporar como **gate de validação obrigatório** da Sessão 4 a
+correlação de Pearson entre o score final e a `renda_media_efetiva_real`.
+Critério de alerta: correlação acima de ~0,8 indica que o score virou
+termômetro de renda → reponderar para baixo o subíndice de Capacidade
+Financeira. Diagnóstico barato e honesto, executado após a consolidação do
+score.
+
+### P4.2 Pesos dos subíndices — modelo híbrido como linha de partida
+
+Três cenários considerados (da nota): (A) pesos iguais 25% cada; (B) pesos
+integralmente derivados do PCA; (C) híbrido — predominância dos pesos
+conceituais, PCA como ajuste.
+
+*Decisão:* adotar o **Cenário C (híbrido)** como hipótese de trabalho,
+coerente com o princípio de proporcionalidade do projeto (PCA valida e
+calibra na margem; não substitui a interpretação econômica). Pesos iguais
+permanecem como baseline de comparação. Decisão final de pesos depende do
+resultado do gate P4.1 e do PCA.
+
+### P4.3 Balanceamento diagnóstico do PCA ("balanceamento virtual comparativo")
+
+Conceito de **dominância estrutural** (da nota): como autônomos são ~67% do
+escopo, ~67% da variância total que o PCA otimiza vem deles. Os primeiros
+componentes principais — que estruturam o espaço onde o K-Means desenha os
+clusters — podem alinhar-se com "o que separa autônomos entre si", deixando
+os perfis menores (familiar auxiliar, público sem carteira) projetados numa
+régua que não é a deles.
+
+*Discussão crítica do autor:* a proporção 67% reflete a realidade da PNAD e
+**não deve ser alterada** na base de produção — não mexemos nos dados, apenas
+recortamos. Questão levantada: se a base reflete a realidade, por que
+balancear?
+
+*Esclarecimento e decisão:* a distinção é entre **balancear para corrigir**
+(rejeitado — distorceria a realidade e contaminaria os clusters) e
+**balancear para diagnosticar** (aceito — apenas mede). O procedimento:
+
+1. PCA na base real (3.476 células, proporções intactas) → guarda os
+   *loadings*. Esta é a régua de produção; é ela que segue no pipeline.
+2. Cópia temporária e descartável com N igual de células por
+   `posicao_ocupacao` (amostragem aleatória sem reposição). Não reflete o
+   Brasil e não pretende; é instrumento de laboratório.
+3. PCA na cópia balanceada → guarda *esses* loadings.
+4. Comparação dos dois conjuntos de loadings (ângulo entre subespaços ou
+   correlação componente a componente).
+
+Leitura: loadings **semelhantes** → estrutura robusta/universal, dominância
+não distorce a régua, segue-se tranquilo com o PCA da base real. Loadings
+**muito diferentes** → dominância confirmada; é **achado analítico** (não
+defeito), que pode motivar clusterização por estrato ocupacional. Em nenhum
+cenário a base de produção é alterada.
+
+*Explicitamente NÃO adotados:* oversampling, undersampling definitivo, SMOTE,
+geração sintética. O balanceamento é exclusivamente diagnóstico, sobre cópia
+descartável.
+
+*Ressalva técnica:* se `familiar auxiliar` (~3-5% do escopo) tiver
+pouquíssimas células, a base balanceada (limitada pela menor categoria) pode
+ficar pequena demais para um PCA estável — nesse caso a divergência de
+loadings pode ser efeito de tamanho de amostra, não de dominância real.
+Alternativas: balancear até a segunda menor categoria, ou rodar PCA
+estratificado por posição ocupacional e comparar eixos entre estratos.
+Decisão da rota fica para a execução, vendo os N reais por categoria.
+
+### P4.4 Risco sistemático / resiliência econômica — conceito aceito, materialização adiada
+
+A nota (seção 7.1) sugeriu um índice de resiliência econômica. Na leitura
+inicial, pareceria redundante com `desvio_relativo_renda_pct` e
+`cv_renda_efetiva` (que já estão em Estabilidade Econômica — criar índice das
+mesmas variáveis seria dupla contagem).
+
+*Refinamento do autor:* a intenção não era re-empacotar o gap interno, mas
+introduzir uma dimensão de **risco sistemático** — exposição a choques
+externos correlacionados (macro, setorial, climático) que atingem uma classe
+inteira de uma vez. Distinção válida e qualitativamente diferente do que o
+modelo captura hoje: o CV mede **volatilidade observada num retrato**, não
+**fragilidade latente a choques sistêmicos**. Duas células com mesmo CV podem
+ter exposição externa completamente diferente (ex.: autônomo agrícola
+— safra, preço de commodity, seca — vs. autônomo de comércio urbano).
+
+*Avaliação:* conceito aprovado, mas **materialização como subíndice de score
+recusada/adiada** por dois motivos:
+- **Série insuficiente:** medir risco sistemático de forma defensável exigiria
+  estimar a sensibilidade da renda setorial ao ciclo macro (um *beta*) ou a
+  variância interanual por setor. Com apenas 5 pontos anuais (2021–2025),
+  qualquer estimativa é estatisticamente frágil.
+- **Proporcionalidade:** adicionaria sofisticação não-auditável pelo público
+  executivo, com ganho de informação incerto.
+
+*Observação central:* uma versão modesta do conceito **já está latente** na
+decisão de tratar `grupamento_atividade` como dimensão padrão. A agricultura
+puxando o CV para ~1,4 **é** a assinatura do risco sistemático aparecendo nos
+dados — pela porta da heterogeneidade, sem o rótulo financeiro.
+
+*Decisão:* (a) registrar o conceito como **lente interpretativa** dos clusters
+e do storytelling ("cluster estável porém setorialmente exposto"); (b)
+opcionalmente, ao final da Sessão 4, testar variância interanual da renda real
+por setor como **variável diagnóstica** (não como peso no score) — mesma
+filosofia do balanceamento diagnóstico do PCA; (c) deixar registrada como
+**evolução futura** (módulo posterior) a possibilidade de cruzar
+`grupamento_atividade` com fonte externa de volatilidade setorial (PIB
+setorial trimestral do IBGE, índices de preços agrícolas) para estimar
+exposição com série adequada — expansão de escopo de fontes, fora da Sessão 4.
+
+### P4.5 Dimensionamento de clusters via peso amostral
+
+A nota (seção 7.2) sugeriu dimensionar os clusters (população potencial por
+cluster, tamanho de mercado). *Avaliação: incluir* — é a ponte entre o
+analítico e o executivo (um cluster sem tamanho é curiosidade estatística; com
+tamanho é case de negócio).
+
+*Ponto técnico:* a view base hoje guarda `total_entrevistados` (contagem bruta
+de respondentes), não população expandida. Dimensionamento populacional real
+exige a **soma dos pesos amostrais da PNAD** por célula (variável de peso com
+calibração de pós-estratificação). *Ação:* verificar se a `basedosdados` expõe
+a variável de peso; se sim, avaliar adicionar coluna de população expandida
+(`SUM(peso)`) à base **antes** de clusterizar. Se não expuser, documentar como
+limitação e dimensionar por contagem de respondentes (proxy mais grosseiro).
+
+### P4.6 Reenquadramento de escopo — de "crédito" para relacionamento financeiro multiproduto
+
+*Insight do autor:* o escopo do projeto não deve se restringir a crédito, mas
+abranger um espectro mais amplo de produtos financeiros — da porta de entrada
+(conta corrente, meio de pagamento) a operações complexas (financiamento,
+capital de giro). A invisibilidade estrutural começa antes do crédito, em "não
+tem relação transacional nenhuma".
+
+*Avaliação:* o ajuste é de **enquadramento, não de cálculo**. O score
+socioeconômico (estabilidade + capacidade) é agnóstico ao produto financeiro
+de destino. *Decisão:* (a) **não reabrir** as Sessões 1–3 — base e deflação
+são indiferentes ao produto; (b) ajustar o **tom conceitual** (arquitetura,
+README, storytelling) de "potencial de crédito" para "potencial de
+relacionamento financeiro / inclusão", com crédito como um dos andares; (c)
+materializar concretamente na **Sessão 5**, construindo a profundidade
+financeira territorial como índice **multiproduto** a partir das rubricas do
+ESTBAN além de crédito (depósitos à vista, poupança, nº de agências).
+
+### P4.7 Indicador de Oportunidade de Inclusão Financeira — confirmação de agenda
+
+A nota (seções 5 e 7.3) propôs *Oportunidade = Potencial × Gap de Profundidade
+Financeira*. *Avaliação:* não é ideia nova — é a Estratégia Territorial (seção
+12 da arquitetura) já consolidada. Adotada a nuance terminológica **"gap de
+profundidade"** (distância até um patamar de referência) em vez de "baixa
+profundidade" (nível absoluto), por dialogar melhor com o reenquadramento
+multiproduto (P4.6). Confirma a separação conceitual potencial × oportunidade.
+
+### P4.8 Ordem de execução sugerida para a Sessão 4
+
+Tratamento de nulos/outliers (42 células CV null, 180 com CV > 2) **antes** da
+padronização z-score — outlier não tratado distorce média e desvio e contamina
+todo o score a jusante.
+
+---
+
 *Documento mantido manualmente. Atualizar ao final de cada sessão.*
-*Última atualização: Sessão 3 — Deflação pelo IPCA concluída.*
+*Última atualização: Pré-Sessão 4 — decisões metodológicas registradas a
+partir de avaliação de nota técnica externa. Sessão 4 ainda não iniciada.*
