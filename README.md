@@ -1,6 +1,6 @@
 # Mapeamento de Bons Pagadores Fora do Radar do SFN
 
-!![Social Preview](Imagens/thumb_v6.png)
+[Social Preview](Imagens/thumb_v6.png)
 
 > Identificação de perfis socioeconômicos com potencial de estabilidade
 > financeira que estão estruturalmente invisíveis ao Sistema Financeiro
