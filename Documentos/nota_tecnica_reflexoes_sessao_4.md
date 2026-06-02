@@ -1,16 +1,15 @@
+
 # Nota Técnica — Reflexões Metodológicas Adicionais após a Sessão 3
 
 ## Objetivo
 
-Esta nota registra reflexões metodológicas complementares realizadas após a conclusão da Sessão 3 (Deflação pelo IPCA), com foco na futura construção do score composto, na aplicação de PCA, na clusterização e na integração territorial.
+Esta nota registra reflexões metodológicas complementares realizadas após a conclusão da Sessão 3 (Deflação pelo IPCA), com foco na futura construção do score composto, na aplicação de PCA, na clusterização, na integração territorial e em possíveis evoluções analíticas do projeto.
 
-O objetivo é consolidar questionamentos, riscos potenciais e análises de sensibilidade sugeridas para discussão antes do início da Sessão 4.
+O objetivo é consolidar questionamentos, riscos potenciais, análises de sensibilidade e hipóteses de evolução sugeridas para discussão antes do início da Sessão 4.
 
 ---
 
 # 1. Revalidação da Unidade Analítica do Projeto
-
-Durante a discussão foi revisitado o conceito de unidade analítica adotado pelo projeto.
 
 Embora a fonte primária seja composta pelos microdados individuais da PNAD Contínua, o modelo não opera sobre indivíduos.
 
@@ -55,28 +54,14 @@ Correlação excessivamente elevada pode indicar que o score está reproduzindo 
 
 ## Discussão sobre os Pesos dos Subíndices
 
-Foi levantada a hipótese de utilizar pesos equilibrados entre os quatro subíndices.
-
-A avaliação realizada foi que essa abordagem constitui uma boa linha de base inicial, mas não deve necessariamente ser assumida como solução definitiva.
-
 Sugestão de comparação entre três cenários:
 
-### Cenário A
-
-Pesos iguais.
-
+### Cenário A — Pesos iguais
 25% para cada subíndice.
 
-### Cenário B
+### Cenário B — Pesos derivados integralmente do PCA
 
-Pesos derivados integralmente do PCA.
-
-### Cenário C
-
-Modelo híbrido.
-
-Exemplo:
-
+### Cenário C — Modelo híbrido
 - predominância dos pesos conceituais;
 - PCA utilizado apenas como mecanismo de ajuste.
 
@@ -86,7 +71,7 @@ A percepção preliminar é que o modelo híbrido tende a preservar melhor a int
 
 # 3. Discussão sobre PCA e Dominância Estrutural dos Autônomos
 
-Foi discutido o fato de os trabalhadores autônomos representarem aproximadamente dois terços do universo analisado.
+Os trabalhadores autônomos representam aproximadamente dois terços do universo analisado.
 
 A preocupação não está relacionada à qualidade da base.
 
@@ -114,10 +99,6 @@ Significa apenas que a estrutura estatística identificada pode refletir princip
 
 ## Discussão sobre Balanceamento
 
-Foi levantada preocupação legítima quanto ao uso de técnicas de balanceamento.
-
-A avaliação realizada foi que o projeto não deve modificar artificialmente a distribuição real da população observada.
-
 Não foi sugerido:
 
 - oversampling;
@@ -132,11 +113,9 @@ A proposta discutida possui finalidade exclusivamente diagnóstica.
 Executar PCA em dois cenários:
 
 ### Cenário Real
-
 Base original.
 
 ### Cenário Diagnóstico
-
 Amostra temporariamente balanceada por posição ocupacional.
 
 Objetivo:
@@ -146,11 +125,9 @@ Avaliar se os componentes principais permanecem estruturalmente semelhantes.
 Possíveis interpretações:
 
 ### Resultados semelhantes
-
 Indicam que os componentes capturam padrões gerais do universo estudado.
 
 ### Resultados muito diferentes
-
 Indicam possível dominância estrutural dos autônomos.
 
 Nesse caso, a descoberta é analiticamente relevante, mesmo que nenhuma correção seja aplicada.
@@ -203,31 +180,84 @@ Oportunidade de Inclusão Financeira =
 
 Potencial Socioeconômico × Baixa Profundidade Financeira Territorial
 
-Essa abordagem preserva a independência conceitual entre:
-
-- qualidade do perfil;
-- acessibilidade financeira do território.
-
 ---
 
 # 6. Avaliação Geral da Arquitetura Atual
 
-A avaliação realizada ao final da discussão foi positiva.
+Principais pontos fortes identificados:
 
-Os principais pontos fortes identificados foram:
-
-- clara distinção entre invisibilidade estrutural e invisibilidade por escolha;
+- distinção entre invisibilidade estrutural e invisibilidade por escolha;
 - uso de célula-perfil em vez de indivíduo;
-- manutenção da agricultura como dimensão analítica e não como elemento a ser excluído;
-- preocupação explícita com interpretabilidade;
-- separação adequada entre score socioeconômico e territorialização.
+- manutenção da agricultura como dimensão analítica;
+- preocupação com interpretabilidade;
+- separação entre score socioeconômico e territorialização.
 
-Os principais pontos de atenção para a Sessão 4 são:
+Principais pontos de atenção para a Sessão 4:
 
 - evitar que o score se transforme em proxy de renda;
 - monitorar possível dominância estrutural dos autônomos;
 - utilizar PCA como ferramenta de validação e não como substituto da interpretação econômica;
-- preservar a separação conceitual entre potencial socioeconômico e oportunidade territorial de inclusão financeira.
+- preservar a separação entre potencial socioeconômico e oportunidade territorial.
+
+---
+
+# 7. Possíveis Evoluções Analíticas Futuras
+
+Esta seção registra hipóteses de evolução identificadas durante a discussão.
+
+Não constituem decisões metodológicas do projeto.
+
+## 7.1 Índice de Resiliência Econômica
+
+Hipótese de aprofundamento da dimensão de estabilidade econômica a partir da relação entre renda habitual e renda efetiva.
+
+Objetivos:
+
+- complementar a leitura de estabilidade financeira;
+- diferenciar estabilidade estrutural de estabilidade aparente;
+- capturar capacidade de absorção de choques econômicos.
+
+## 7.2 Dimensionamento dos Clusters
+
+Após a clusterização, estimar:
+
+- população potencial por cluster;
+- distribuição territorial dos clusters;
+- participação relativa dos clusters.
+
+Objetivo:
+
+Aumentar a utilidade executiva dos resultados e permitir avaliações de escala potencial para iniciativas de inclusão financeira.
+
+Questões naturais:
+
+- Quantas pessoas pertencem ao cluster mais promissor?
+- Qual o tamanho potencial do mercado associado a cada perfil?
+- Onde estão concentrados esses grupos?
+
+## 7.3 Indicador de Oportunidade de Inclusão Financeira
+
+Hipótese de criação de indicador derivado após a integração com ESTBAN.
+
+Objetivo:
+
+Combinar:
+
+- potencial socioeconômico;
+- profundidade financeira territorial.
+
+Exemplo conceitual:
+
+Oportunidade de Inclusão Financeira =
+
+Potencial Socioeconômico × Gap de Profundidade Financeira
+
+A proposta busca identificar territórios onde coexistem:
+
+- perfis economicamente promissores;
+- baixa presença relativa do sistema financeiro.
+
+Potencialmente, esse indicador pode se tornar uma das principais saídas executivas do projeto.
 
 ---
 
