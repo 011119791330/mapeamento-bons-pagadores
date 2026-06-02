@@ -1,6 +1,6 @@
 # Mapeamento de Bons Pagadores Fora do Radar do SFN
 
-!![Social Preview](Imagens/thumb_v6.png)
+![Social Preview](social_preview_mescla_light.png)
 
 > Identificação de perfis socioeconômicos com potencial de estabilidade
 > financeira que estão estruturalmente invisíveis ao Sistema Financeiro
@@ -26,6 +26,16 @@ Esse fenômeno tem dois rostos diferentes que costumam ser confundidos:
 Este projeto foca no **primeiro grupo** — a lacuna real de inclusão
 financeira — e busca mapear, dentro dele, quem teria perfil de bom
 pagador se fosse analisado.
+
+> **Nota de escopo:** embora o vocabulário do projeto enfatize "crédito"
+> e "bons pagadores", o escopo conceitual é o **relacionamento financeiro
+> em sentido amplo** — da porta de entrada (conta corrente, meio de
+> pagamento, bancarização básica) a operações complexas (financiamento,
+> capital de giro). A invisibilidade estrutural começa antes do crédito,
+> na ausência de qualquer relação transacional com o SFN. O score
+> socioeconômico é agnóstico ao produto de destino; o enquadramento
+> multiproduto materializa-se na profundidade financeira territorial
+> (Sessão 5) e no storytelling (Sessão 6).
 
 ---
 
