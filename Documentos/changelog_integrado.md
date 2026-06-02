@@ -40,8 +40,8 @@ e visam tornar transparente o processo decisório.
 |--------|-----------|--------|
 | 1 | Estruturação da base (view, variáveis, filtros) | ✅ Concluída |
 | 2 | EDA completa (quantitativas, qualitativas, regional, temporal) | ✅ Concluída |
-| 3 | Deflação pelo IPCA | 🔜 Próxima |
-| 4 | Construção e calibração do score | ⏳ Pendente |
+| 3 | Deflação pelo IPCA | ✅ Concluída |
+| 4 | Construção e calibração do score | 🔜 Próxima |
 | 5 | Geointeligência (cruzamento com ESTBAN e Censo) | ⏳ Pendente |
 | 6 | Visualização e entregável final | ⏳ Pendente |
 
@@ -549,5 +549,126 @@ para harmonização temporal das comparações. Refinamentos esperados:
 
 ---
 
+## Sessão 3 — Deflação pelo IPCA
+**Status:** Concluída
+
+---
+
+### 3.1 Decisões Metodológicas
+
+- **Índice:** IPCA nacional único. *Decisão do autor:* índices regionais
+  exigiriam distribuir corretamente cada IPCA-RM pelas células
+  correspondentes, e as cestas regionais (urbanas/metropolitanas) não
+  representam o escopo majoritariamente agrícola e rural-disperso do
+  projeto. O nacional é o estimador menos enviesado para um recorte que
+  não casa com nenhuma cesta regional específica.
+- **Ano-base:** 2025 (preços de 2025). Justificativa comunicacional:
+  valores expressos na régua do ano mais recente são os mais intuitivos
+  para o público executivo. A escolha de base não altera conclusões
+  relativas, apenas o denominador.
+- **Critério temporal do deflator:** índice médio dos 12 meses de cada ano.
+  *Justificativa corrigida em discussão:* a renda individual da PNAD é um
+  retrato do mês de referência, não um fluxo anual — mas a
+  `renda_media_efetiva` da célula-perfil agrega respondentes entrevistados
+  ao longo dos 12 meses (a PNAD distribui a amostra no tempo). O deflator
+  coerente com uma média de retratos espalhados pelo ano é o nível médio
+  de preços do ano, não o de dezembro. Hipótese assumida: amostra
+  aproximadamente uniforme ao longo do ano dentro de cada célula.
+- **Variáveis deflacionadas:** `renda_media_efetiva` e `renda_media_habitual`,
+  apenas. *Decisão do autor:* não deflacionar medidas estatísticas
+  derivadas — `desvio_absoluto_renda` (o gap será usado apenas em termos
+  percentuais, via `desvio_relativo_renda_pct`), `std_renda_efetiva` e
+  `cv_renda_efetiva` (este é adimensional; numerador e denominador escalam
+  pelo mesmo fator intra-ano e o CV deflacionado é idêntico ao nominal —
+  invariância documentada para evitar dupla contagem na Sessão 4).
+
+---
+
+### 3.2 Fonte e Fatores
+
+- Fonte: IBGE/SIDRA tabela 1737, variável "Número-índice
+  (base dez/1993 = 100)", série mensal jan/2021–dez/2025, Brasil.
+- Uso do número-índice (e não da variação acumulada) por carregar o nível
+  diretamente: `fator_ano = índice_médio_2025 / índice_médio_ano`.
+
+| Ano | Índice médio (12m) | Fator (base 2025) |
+|-----|--------------------|-------------------|
+| 2021 | 5.827,78 | 1,252765 |
+| 2022 | 6.368,60 | 1,146380 |
+| 2023 | 6.661,15 | 1,096033 |
+| 2024 | 6.952,07 | 1,050168 |
+| 2025 | 7.300,84 | 1,000000 |
+
+- Inflação acumulada aplicada (média 2021 → média 2025): **25,3%**. Nota: a
+  EDA estimara ~30% de cabeça; o valor real é menor. O critério
+  dezembro-contra-dezembro daria 21,0% — a diferença de ~4 p.p. é o efeito
+  da escolha média-anual vs. ponto-final, e justifica registrar o critério
+  explicitamente.
+
+---
+
+### 3.3 Arquitetura — Decisão sobre Materialização
+
+- **View-filha em vez de colunas embutidas na view base.** *Decisão do
+  autor:* a view base permanece extração pura da PNAD (fonte da verdade
+  nominal); cada fonte externa entra como camada rastreável. Estabelece o
+  padrão que valerá para ESTBAN e Censo (Sessão 5): integração externa =
+  nova camada, não alteração da base.
+- **Tabela auxiliar de fatores** (`aux_fatores_deflacao_ipca`) em vez de
+  constantes espalhadas nas queries: auditável, reaproveitável, e isola a
+  fonte (rebasear ou revisar o IPCA = trocar uma tabela, não dezenas de
+  queries).
+- Objetos criados em `credito-pnad-2026.pnad_rend_trab`:
+  - `aux_fatores_deflacao_ipca` (tabela)
+  - `view_renda_media_uf_deflacionada` (view-filha; adiciona
+    `renda_media_efetiva_real` e `renda_media_habitual_real` ao lado das
+    nominais)
+- **Nota técnica:** `ano` é `STRING` na view base (padrão da basedosdados —
+  microdados chegam como string). A tabela auxiliar alinhou o tipo (não se
+  casta a view base). Padrão a observar em todos os joins externos futuros,
+  especialmente código de município na Sessão 5.
+- `JOIN` de enriquecimento feito com `LEFT JOIN` (não `INNER`): linha sem
+  fator correspondente fica visível com `NULL` em vez de desaparecer
+  silenciosamente.
+
+---
+
+### 3.4 Achados Reais (validação contra a base)
+
+Reconfirmação das hipóteses nominais da EDA, agora em termos reais
+(preços de 2025):
+
+| Categoria | Var. nominal 21→25 | Var. real 21→25 |
+|-----------|--------------------|-----------------|
+| Autônomos | +50% | **+19,9%** |
+| Empregado privado s/ carteira | +47% | **+17,4%** |
+| Trab. doméstico s/ carteira | +21% | **−3,1%** |
+| Empregado público s/ carteira | −3% | **−22,4%** |
+
+- A deflação **inverte a leitura** de duas categorias: doméstico, que
+  parecia crescer, perdeu poder de compra; empregado público sem carteira
+  teve perda real severa (quase ¼ do poder de compra). Confirma que a
+  Sessão 3 tem peso analítico, não cosmético.
+- *Pendência herdada para Sessão 4:* as variações por categoria acima usam
+  os agregados da EDA cruzados com os fatores. A view-filha já permite
+  recalcular isso célula a célula com `grupamento_atividade` como dimensão —
+  recomendado refazer no início da Sessão 4 sobre a base real.
+
+---
+
+### 3.5 Próxima Sessão — Construção e Calibração do Score
+
+Pendências que entram na Sessão 4 (herdadas da 2.5, inalteradas pela
+deflação):
+
+- Tratamento das 42 células com `cv_renda_efetiva` null e das 180 com CV > 2
+- Dominância de Autônomos (~67%) no balanceamento da clusterização
+- `media_horas_trabalhadas` estruturalmente nula fora de Autônomos —
+  imputar ou excluir
+- Usar `renda_*_real` (não nominal) como input dos subíndices de
+  Capacidade Financeira
+
+---
+
 *Documento mantido manualmente. Atualizar ao final de cada sessão.*
-*Última atualização: Sessão 2 — EDA completa e tipologia conceitual.*
+*Última atualização: Sessão 3 — Deflação pelo IPCA concluída.*
