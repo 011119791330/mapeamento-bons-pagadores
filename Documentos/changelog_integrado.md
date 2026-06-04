@@ -840,6 +840,173 @@ todo o score a jusante.
 
 ---
 
+## Sessão 4 — Subseção A: Auditoria Diagnóstica da View Base
+**Status:** Concluída (diagnóstico). Correções e implementação do score em subseções seguintes.
+
+Na abertura da Sessão 4, antes de construir o score, dois gatilhos levaram a uma
+auditoria sistemática da view base contra a documentação oficial e contra os
+próprios dados:
+
+1. O achado de que `V1028` (peso de pós-estratificação) destrava a P4.5 expôs que
+   a view base usava **média aritmética simples**, não ponderada.
+2. A investigação do peso revelou, por um volume destoante (uma categoria
+   territorial com 1,3 milhão de respondentes), que o mapeamento de uma variável
+   estava incorreto — o que motivou auditar **todas** as variáveis da view.
+
+A auditoria confirmou **um problema de método (ponderação)** e **quatro erros de
+mapeamento de variável**, todos originados na implementação da Sessão 1. Escopo e
+rendas permaneceram íntegros — razão pela qual os achados de evolução de renda da
+EDA e a Sessão 3 inteira sobrevivem sem reprocessamento conceitual.
+
+---
+
+### A.1 Método de verificação adotado
+
+Princípio estabelecido: **uma variável se audita pelo que ela contém, não pelo que
+se presume que contenha.** Cada suspeita foi resolvida empiricamente, sem depender
+de fé em documentação:
+
+- **Autodeclaração de tipo:** `SELECT MIN, MAX, COUNT(DISTINCT)` por variável. Uma
+  variável que varre de 1 a 2 é binária; uma que varre de 1 a 120 é contínua.
+  Os dados se autodeclaram independentemente de qualquer dicionário.
+- **Contagem de categorias:** `COUNT(DISTINCT)` + volume por código, cruzado com o
+  dicionário oficial da `basedosdados` (`br_ibge_pnadc.dicionario`) e com o programa
+  de leitura SAS do IBGE.
+- **Coerência de volume:** o tamanho relativo de cada categoria valida o rótulo
+  (ex.: código raro com volume pequeno confirma a versão correta do mapeamento).
+
+Esse procedimento descartou a hipótese de descasamento de versão/visita do
+dicionário: as variáveis corretas existem na tabela, com os intervalos esperados.
+Os erros foram de **seleção/transcrição de variável na Sessão 1**, não de fonte.
+
+---
+
+### A.2 Diagnóstico do método de ponderação (decisão B)
+
+A view base usava `AVG(VD4020)` (média simples), não ponderada pelo peso amostral
+`V1028`. Diagnóstico empírico do impacto (sobre a tabela microdados):
+
+- **Desvio relativo mediano (com sinal):** +1,8%
+- **Desvio relativo absoluto mediano:** 4,0%
+- **Desvio absoluto p90 / p99:** 13,3% / 38,0%
+- **Sistematicidade territorial:** desvio médio entre +2,3% e +3,1% entre todos os
+  tipos de área — **uniforme**, sem padrão direcional que distorça o eixo geográfico.
+
+*Decisão do autor (B):* adotar a ponderação por `V1028` nas variáveis de renda. O
+viés é pequeno e uniforme — o z-score da Sessão 4 o absorveria, e (A) manter média
+simples seria defensável. Optou-se por (B) por dois motivos: (1) as médias
+ponderadas são as estimativas corretas da população (prática padrão do IBGE),
+imprimindo maior honestidade analítica; (2) o custo computacional de ponderar é
+nulo, e a abertura da Sessão 4 é o momento mais barato para corrigir, antes de o
+score ser erguido sobre a base. A natureza de autoaprendizado do projeto torna o
+registro transparente da correção um ativo, não um passivo.
+
+*Distinção registrada:* o peso tem dois usos — (a) **expansor populacional**
+(`SUM(V1028)`), incontroverso, necessário para dimensionar clusters (P4.5); e (b)
+**ponderador de médias** (`SUM(x·V1028)/SUM(V1028)`), objeto da decisão acima.
+
+*Pendência técnica para a subseção de correção:* decidir se a ponderação se estende
+ao desvio-padrão / CV intra-célula. `STDDEV_SAMP` não é ponderado; a coerência plena
+exigiria variância ponderada calculada manualmente. Implicação direta no subíndice
+de Estabilidade Econômica.
+
+---
+
+### A.3 Erros de mapeamento confirmados
+
+| Variável (view) | Implementação Sessão 1 (errada) | Correto (confirmado) | Método de confirmação |
+|---|---|---|---|
+| Território | usava só `V1023`, com `5='Rural'` e `4='Urbano fora de RM'` | `V1023` só tem 1–4; `4`=**Resto da UF**; **não existe rural em V1023** | query crua `V1023` (só 1–4) |
+| Urbano/Rural | **ausente da view** | `V1022`: `1`=Urbana, `2`=Rural — variável transversal a `V1023` | query cruzada `V1022 × V1023` (587k rurais em "Resto da UF") |
+| `V2005` posição domicílio | `CASE` de 16 categorias, deslocado a partir do código 03 | **19 categorias** (versão atual da PNAD) | `COUNT(DISTINCT)`=19 + volume do cód. 03 (11.776 = cônjuge mesmo sexo, raro) |
+| Horas trabalhadas | `V4019` (Sim/Não) tratada como horas | **`V4039`** (1 a 120 horas) | autodeclaração: `V4019` min=1/max=2; `V4039` min=1/max=120 |
+| Tempo no trabalho | `V4032` (Sim/Não) com faixas de meses inexistentes | **`V4040`** (1–4 faixas) + auxiliares | autodeclaração: `V4032` min=1/max=2; `V4040` min=1/max=4 |
+
+**Detalhamento territorial:** rural e urbano (`V1022`) são **transversais** ao tipo
+de área (`V1023`) — existe rural dentro de capital (13.329), de RM (30.276) e de
+RIDE (5.350), além do grosso em Resto da UF (586.957). Total rural no escopo:
+~636 mil respondentes, antes invisíveis por fusão com urbano sob o rótulo errado.
+São dois eixos independentes; ambos necessários.
+
+**Detalhamento `V2005`:** o `CASE` antigo (16 categorias) não distinguia
+"cônjuge de sexo diferente / mesmo sexo" nem "filho do casal / filho só do
+responsável", deslocando todos os rótulos a partir do código 03. Rótulos oficiais
+das 19 categorias anexados em A.5.
+
+---
+
+### A.4 Decisão de design — granularidade de `tempo_no_trabalho`
+
+A variável nativa `V4040` tem 4 faixas, mas "2 anos ou mais" concentra **65,4%** do
+escopo — baixo poder discriminante. A abertura desse balde via `V40403` (anos)
+revelou distribuição rica e quase uniforme:
+
+| Faixa fina (dentro de "2 anos ou mais") | % do balde |
+|---|---|
+| 2 a 4 anos | 31,2% |
+| 5 a 9 anos | 21,1% |
+| 10 a 19 anos | 22,3% |
+| 20+ anos | 25,5% |
+
+*Decisão do autor:* adotar **granularidade fina (7 faixas)** — as 3 faixas nativas
+curtas (`V4040` 1–3) mais 4 faixas longas derivadas de `V40403`. Justificativa
+econômica: tempo no trabalho é proxy de estabilidade ocupacional (núcleo do
+subíndice de Estabilidade); distinguir o informal veterano (20+ anos) do recém-entrado
+(2–4 anos) é sinal de alto valor que a variável nativa descartava. Cobertura validada:
+a soma das faixas finas (1.302.596) bate exatamente com o total da faixa 4 — zero
+nulos, nenhum respondente perdido na transição.
+
+Faixas finais: Menos de 1 mês · 1 mês a <1 ano · 1 a <2 anos · 2 a 4 anos ·
+5 a 9 anos · 10 a 19 anos · 20+ anos.
+
+---
+
+### A.5 Mapa de correções para a subseção seguinte (reconstrução da view)
+
+1. **Ponderação** por `V1028` nas rendas (`SUM(x·V1028)/SUM(V1028)`) + coluna
+   `populacao_expandida = SUM(V1028)`.
+2. **`V1022`** adicionado como dimensão urbano/rural (`1`=Urbana, `2`=Rural).
+3. **`V1023`** relabel: Capital / Resto da RM / Resto da RIDE / **Resto da UF**
+   (remover "Rural" e "Urbano fora de RM").
+4. **`V2005`** remapeado para as 19 categorias oficiais.
+5. **`V4039`** substitui `V4019` para `media_horas_trabalhadas`.
+6. **`V4040` + `V40403`** substituem `V4032` para `tempo_no_trabalho` (7 faixas).
+7. **Pendência:** decidir ponderação do desvio-padrão / CV intra-célula.
+
+**Impacto retroativo a tratar:** EDA territorial precisa ser refeita (recorte de
+área estava errado); achados de renda da EDA e Sessão 3 permanecem válidos (escopo
+`VD4009` e rendas `VD4020`/`VD4016` confirmados íntegros).
+
+**Rótulos oficiais V2005 (19 categorias):**
+01 Pessoa responsável · 02 Cônjuge sexo diferente · 03 Cônjuge mesmo sexo ·
+04 Filho do responsável e do cônjuge · 05 Filho somente do responsável ·
+06 Enteado(a) · 07 Genro/nora · 08 Pai/mãe/padrasto/madrasta · 09 Sogro(a) ·
+10 Neto(a) · 11 Bisneto(a) · 12 Irmão/irmã · 13 Avô/avó · 14 Outro parente ·
+15 Agregado(a) · 16 Convivente · 17 Pensionista · 18 Empregado(a) doméstico(a) ·
+19 Parente do(a) empregado(a) doméstico(a).
+
+---
+
+### A.6 Aprendizados metodológicos
+
+- **Validar variáveis contra os dados antes de construir lógica sobre elas.** Um
+  `SELECT MIN, MAX, COUNT(DISTINCT)` por variável, na Sessão 1, teria evitado os
+  quatro erros em segundos. Passa a ser etapa obrigatória ao incorporar qualquer
+  variável nova (princípio a observar especialmente nos joins externos da Sessão 5).
+- **Implementação inicial das variáveis foi da IA de apoio (Claude), na Sessão 1;**
+  os erros de mapeamento originaram-se ali, sem validação contra a fonte. Registro
+  de responsabilidade explícito.
+- **Desconforto intelectual é um dado.** O questionamento do autor sobre a
+  inconsistência ("não faz sentido por tipo de variável") foi o que destravou a
+  auditoria. O aprendizado correspondente: sinais de incômodo analítico merecem ser
+  puxados até o fim, inclusive contra sugestões automatizadas de IA.
+- **Momento da correção.** Erros contidos antes da construção do score; reparo
+  custou uma subseção de diagnóstico, não o projeto. A disciplina de auditar a
+  fundação antes de erguer o modelo provou seu valor.
+
+---
+
 *Documento mantido manualmente. Atualizar ao final de cada sessão.*
-*Última atualização: Pré-Sessão 4 — decisões metodológicas registradas a
-partir de avaliação de nota técnica externa. Sessão 4 ainda não iniciada.*
+*Última atualização: Sessão 4 — Subseção A (auditoria diagnóstica da view base).
+Quatro erros de mapeamento e o método de ponderação confirmados; correções (Subseção B)
+e implementação do score (Subseção C) pendentes.*
