@@ -91,6 +91,8 @@ As análises territoriais posteriores serão realizadas em nível agregado:
 
 Essa abordagem equilibra granularidade, robustez estatística e interpretabilidade executiva.
 
+**Atualização (Subseção 4-B):** após a reconstrução da view base, o escopo compreende **1.573 células-perfil** (≥ 30 respondentes cada). A contagem difere da v01 (~3.476) por duas decisões da Subseção B: abertura de `tempo_no_trabalho` para 7 faixas (maior resolução, menos células) e reagrupamento de `posicao_no_domicilio` para 4 grupos (recupera massa). Ver changelog B.3 e B.4.
+
 ---
 
 # 6. Recorte Populacional
@@ -113,6 +115,8 @@ O modelo concentra-se em segmentos da população economicamente ativa com menor
 
 O filtro de escopo populacional vive na view base (`WHERE VD4009 IN ('2', '4', '6', '9', '10')`), garantindo consistência em todas as análises descendentes.
 
+`VD4009` auditado contra o dicionário oficial da basedosdados na Subseção 4-B: os 5 códigos do escopo correspondem a "Empregado do setor privado sem carteira" (2), "Trabalhador doméstico sem carteira" (4), "Empregado público sem carteira" (6), "Conta-própria" (9) e "Trabalhador familiar auxiliar" (10). Rótulo canônico "Conta-própria"; "Autônomos" é sinônimo informal de narrativa. Empregador (cód 8) fica corretamente fora do escopo (é capital, não trabalho precarizado).
+
 ---
 
 # 7. Arquitetura Conceitual do Score Composto
@@ -132,6 +136,8 @@ Variáveis associadas:
 
 Hipótese econômica: maior estabilidade ocupacional e menor volatilidade tendem a indicar maior previsibilidade financeira mesmo em contextos de informalidade.
 
+**Atualização (Subseção 4-B):** `cv_renda_efetiva` e `std_renda_efetiva` passam a ser calculados com **variância ponderada** por `V1028` (peso de pós-estratificação), coerente com as médias ponderadas. Fórmula: variância amostral ponderada com correção de Bessel generalizada, calculada por agregação numa única passada. É uma aproximação de peso de frequência (não estimativa de variância sob desenho amostral complexo), adotada por proporcionalidade. Ponderar o desvio era necessário porque o CV é razão `desvio/média`: com a média já ponderada (decisão da auditoria), deixar o desvio não-ponderado produziria um CV sem interpretação limpa. A invariância do CV à deflação (Sessão 3) sobrevive à ponderação. Ver changelog B.2.
+
 Distinção conceitual registrada (pré-Sessão 4): este subíndice mede **volatilidade observada** (dispersão num retrato, via CV) e **gap conjuntural** (via desvio relativo), mas não mede **risco sistemático** — exposição a choques externos correlacionados (macro, setorial, climático) que atingem uma classe inteira simultaneamente. Duas células com mesmo CV podem ter exposição externa distinta (autônomo agrícola vs. autônomo de comércio urbano). O risco sistemático não é incorporado como variável de score nesta etapa (série de 5 anos insuficiente para estimá-lo de forma defensável; princípio de proporcionalidade), mas (a) já se manifesta indiretamente via `grupamento_atividade` como dimensão padrão — a agricultura puxando o CV é sua assinatura nos dados; (b) será usado como **lente interpretativa** dos clusters; (c) fica registrado como evolução futura possível, mediante integração de fonte externa de volatilidade setorial.
 
 ## 7.2 Subíndice de Capacidade Financeira
@@ -147,7 +153,7 @@ Variáveis associadas:
 
 Hipótese econômica: maior capital humano e maior capacidade recorrente de geração de renda tendem a indicar maior potencial de relacionamento financeiro sustentável.
 
-Observação metodológica: as variáveis monetárias serão deflacionadas previamente (Sessão 3) para garantir comparabilidade temporal e evitar distorções inflacionárias.
+Observação metodológica: as variáveis monetárias serão deflacionadas previamente (Sessão 3) para garantir comparabilidade temporal e evitar distorções inflacionárias, e usadas em sua forma **ponderada e real** (`renda_*_real`) como input do subíndice.
 
 ## 7.3 Subíndice de Vulnerabilidade Familiar
 
@@ -174,6 +180,15 @@ Variáveis associadas:
 
 Hipótese econômica: indivíduos em estágios mais maduros de consolidação profissional e patrimonial tendem a apresentar maior estabilidade financeira potencial.
 
+**Atualização (Subseção 4-B):** `posicao_no_domicilio` reagrupada de 19 categorias oficiais para **4 grupos** conceituais, ao longo de um eixo de maturidade/autonomia no domicílio:
+
+1. Responsável ou cônjuge (~74,8%) — núcleo do domicílio;
+2. Filho(a) ou enteado(a) (~18,2%) — geração descendente direta;
+3. Outro parente (~6,4%) — parentela estendida;
+4. Não-parente ou demais (~0,6%) — cauda colapsada.
+
+O reagrupamento combina afinidade conceitual com o colapso da cauda longa (11 categorias com menos de 1% de participação), recuperando massa analítica sem descartar nenhum respondente. Cônjuges do mesmo sexo (código 3) foram mantidos no grupo dos cônjuges, e não relegados à cauda por baixa frequência — decisão de coerência conceitual e de integridade de representação de uma realidade que a PNAD nem sempre captura bem. Ver changelog B.4.
+
 ---
 
 # 8. Dimensão Transversal — Grupamento de Atividade
@@ -189,7 +204,19 @@ Tratar `grupamento_atividade` como dimensão padrão:
 
 ---
 
-# 9. Pipeline Analítico
+# 9. Eixos Territoriais da View Base
+
+A view base carrega **dois eixos territoriais independentes e transversais** (distinção confirmada na auditoria 4-A), mais uma chave de junção crua:
+
+* `tipo_area` (de `V1023`): Capital / Resto da RM / Resto da RIDE / Resto da UF;
+* `situacao_domicilio` (de `V1022`): Urbana / Rural — **transversal** ao tipo de área (existe rural dentro de capital, RM e RIDE, não apenas no interior; ~636 mil respondentes rurais antes invisíveis sob rótulo errado na v01);
+* `rm_ride` (código cru): chave de junção territorial, mantida **sem decodificação** na base.
+
+Princípio estabelecido: **chaves de junção ficam cruas; dimensões terminais de leitura são decodificadas na view.** A decodificação de `rm_ride` (20 RMs + 1 RIDE, confirmadas contra o programa SAS oficial do IBGE) é tarefa da Sessão 5, via JOIN com dicionário oficial — coerente com o princípio de auditar contra a fonte, não contra a memória. `rm_ride` tem NULL legítimo dominante: a maioria do público-alvo (informal, agrícola) está fora de RM/RIDE, reforçando a tese do projeto.
+
+---
+
+# 10. Pipeline Analítico
 
 Fluxo metodológico do projeto:
 
@@ -198,18 +225,19 @@ Fluxo metodológico do projeto:
 3. Construção das variáveis derivadas (Sessão 1)
 4. Análise exploratória (Sessão 2)
 5. Deflacionamento das variáveis monetárias e harmonização temporal (Sessão 3)
-6. Padronização estatística — z-score com truncamento (Sessão 4)
-7. Construção dos subíndices socioeconômicos (Sessão 4)
-8. Consolidação do score composto (Sessão 4)
-9. Redução dimensional via PCA (Sessão 4)
-10. Clusterização dos perfis socioeconômicos (Sessão 4)
-11. Integração territorial com Censo IBGE e ESTBAN (Sessão 5)
-12. Territorialização dos clusters (Sessão 5)
-13. Desenvolvimento dos dashboards e storytelling executivo (Sessão 6)
+6. Auditoria e reconstrução da view base — ponderação por peso amostral, correção de mapeamentos, reagrupamentos (Sessão 4-A e 4-B)
+7. Padronização estatística — z-score com truncamento (Sessão 4-C)
+8. Construção dos subíndices socioeconômicos (Sessão 4-C)
+9. Consolidação do score composto (Sessão 4-C)
+10. Redução dimensional via PCA (Sessão 4-C)
+11. Clusterização dos perfis socioeconômicos (Sessão 4-C)
+12. Integração territorial com Censo IBGE e ESTBAN (Sessão 5)
+13. Territorialização dos clusters (Sessão 5)
+14. Desenvolvimento dos dashboards e storytelling executivo (Sessão 6)
 
 ---
 
-# 10. Estratégia Estatística
+# 11. Estratégia Estatística
 
 O modelo utilizará técnicas de redução dimensional, especialmente Principal Component Analysis (PCA), com os seguintes objetivos:
 
@@ -230,9 +258,11 @@ O PCA será utilizado como mecanismo complementar de validação estatística, *
 
 **Balanceamento diagnóstico do PCA — "balanceamento virtual comparativo" (decisão pré-Sessão 4):** dado que autônomos são ~67% do escopo, os primeiros componentes principais podem refletir prioritariamente a variação interna dos autônomos (dominância estrutural), deixando os perfis menores projetados numa régua que não é a deles. Para diagnosticar — **sem alterar a base de produção** — o PCA é executado em dois cenários: (1) base real (proporções intactas; é a régua que segue no pipeline) e (2) cópia temporária e descartável balanceada por `posicao_ocupacao` (N igual por categoria, amostragem sem reposição). Comparam-se os *loadings* dos dois cenários: semelhantes → estrutura robusta/universal; muito diferentes → dominância confirmada (achado analítico, não defeito; pode motivar clusterização por estrato). Explicitamente **não** se adota oversampling, undersampling definitivo, SMOTE ou geração sintética — o balanceamento é exclusivamente diagnóstico. Ressalva: se a menor categoria tiver poucas células, considerar balancear até a segunda menor ou usar PCA estratificado, para evitar confundir dominância com efeito de tamanho amostral.
 
+**Regime de CV pós-reconstrução (Subseção 4-B):** sob a base ponderada e com partição mais fina, a mediana do CV intra-célula subiu para ~1,07 (era ~0,6 na v01), com máximo ~17,9 e zero CV nulos. O tratamento de outliers de CV previsto antes da padronização z-score (P4.8) ganha relevância: células pequenas sob ponderação podem inflar o CV quando poucos respondentes de peso alto dominam. Winsorização ou flag de baixa confiabilidade a definir na Subseção C.
+
 ---
 
-# 11. Estratégia de Clusterização
+# 12. Estratégia de Clusterização
 
 Após a consolidação dos componentes socioeconômicos, serão aplicadas técnicas de clusterização não supervisionada.
 
@@ -249,11 +279,11 @@ Técnica inicialmente prevista: K-Means. Podem ser avaliadas posteriormente abor
 
 **Atenção metodológica:** Autônomos representam ~67% do escopo. A clusterização precisa garantir que o peso dessa categoria não dilua a especificidade dos perfis menores (familiar auxiliar, empregado público sem carteira).
 
-**Dimensionamento dos clusters (decisão pré-Sessão 4):** após clusterizar, estimar a população potencial por cluster — a ponte entre o resultado analítico e a leitura executiva (tamanho de mercado, escala de iniciativas de inclusão). Requisito técnico: a view base hoje guarda `total_entrevistados` (contagem bruta de respondentes), não população expandida. O dimensionamento populacional correto exige a **soma dos pesos amostrais da PNAD** por célula (variável de peso com calibração de pós-estratificação). Ação prévia à clusterização: verificar se a `basedosdados` expõe a variável de peso e, em caso afirmativo, avaliar a adição de coluna de população expandida à base. Caso não exposta, documentar como limitação e dimensionar por contagem de respondentes (proxy mais grosseiro).
+**Dimensionamento dos clusters (decisão pré-Sessão 4, destravada na 4-B):** após clusterizar, estimar a população potencial por cluster — a ponte entre o resultado analítico e a leitura executiva (tamanho de mercado, escala de iniciativas de inclusão). A coluna `populacao_expandida` (`SUM(V1028)`) foi adicionada à view base na Subseção 4-B, destravando esse dimensionamento. Distinção operacional a observar: **`populacao_expandida`** (peso) responde "quantas pessoas o cluster representa" (tamanho de mercado); **`total_entrevistados`** (contagem bruta) responde "quão confiável é a estimativa" (robustez amostral). O piso de robustez (`HAVING COUNT(*) >= 30`) é sempre sobre a contagem bruta, nunca sobre população expandida.
 
 ---
 
-# 12. Estratégia Territorial
+# 13. Estratégia Territorial
 
 As análises territoriais buscarão identificar padrões regionais de concentração dos clusters socioeconômicos.
 
@@ -274,11 +304,11 @@ A territorialização tem caráter complementar à segmentação socioeconômica
 | ESTBAN | Município (cód. IBGE) | Agregado para RM/UF |
 | Censo | Setor censitário | Agregado para RM/UF |
 
-Todas as fontes usam código IBGE de município como chave primária. Integração será feita por agregação ascendente.
+Todas as fontes usam código IBGE de município como chave primária. Integração será feita por agregação ascendente. O código `rm_ride` (cru na base) é a chave estabelecida para essa integração.
 
 ---
 
-# 13. Limitações do Modelo
+# 14. Limitações do Modelo
 
 O modelo possui natureza exploratória e não pretende representar mecanismo formal de concessão de crédito.
 
@@ -292,18 +322,26 @@ As inferências baseiam-se exclusivamente em proxies socioeconômicas derivadas 
 
 Os resultados devem ser interpretados como instrumento analítico de segmentação e inteligência socioeconômica, não como mecanismo de scoring.
 
+Limitações metodológicas adicionais registradas na reconstrução (Subseção 4-B):
+
+* Médias e dispersão são ponderadas pelo peso de pós-estratificação da PNAD (`V1028`). A variância ponderada usa aproximação de peso de frequência, não estimativa sob desenho amostral complexo — escolha de proporcionalidade, documentada.
+* A ponderação tem efeito pequeno e estável nas categorias grandes (Conta-própria, ~12% de desvio vs. média simples), mas instável nas categorias pequenas (familiar auxiliar oscila entre 0% e 50% conforme o ano) — efeito de cauda amostral, a tratar na construção do score.
+* Granularidade territorial limitada pela PNAD a UF + RM/RIDE + recorte urbano/rural; `rm_ride` mantido cru e decodificado apenas na Sessão 5.
+
 ---
 
-# 14. Próximas Etapas
+# 15. Próximas Etapas
 
 | Etapa | Status |
 | ----- | ------ |
 | EDA aprofundada | ✅ Concluída (Sessão 2) |
-| Deflacionamento e harmonização temporal | 🔜 Próxima (Sessão 3) |
-| Padronização e construção dos subíndices | Planejada (Sessão 4) |
-| Consolidação do score composto | Planejada (Sessão 4) |
-| PCA | Planejada (Sessão 4) |
-| Clusterização | Planejada (Sessão 4) |
+| Deflacionamento e harmonização temporal | ✅ Concluída (Sessão 3) |
+| Auditoria da view base | ✅ Concluída (Sessão 4-A) |
+| Reconstrução da view base + view-filha | ✅ Concluída (Sessão 4-B) |
+| Padronização e construção dos subíndices | 🔜 Próxima (Sessão 4-C) |
+| Consolidação do score composto | Planejada (Sessão 4-C) |
+| PCA + balanceamento diagnóstico | Planejada (Sessão 4-C) |
+| Clusterização | Planejada (Sessão 4-C) |
 | Integração com ESTBAN e Censo IBGE | Planejada (Sessão 5) |
 | Territorialização dos clusters | Planejada (Sessão 5) |
 | Dashboard Power BI | Planejada (Sessão 6) |
@@ -311,7 +349,7 @@ Os resultados devem ser interpretados como instrumento analítico de segmentaç�
 
 ---
 
-# 15. Considerações Finais
+# 16. Considerações Finais
 
 O projeto busca combinar:
 
@@ -333,5 +371,5 @@ A proposta busca equilibrar:
 
 ---
 
-*Documento de arquitetura — atualizado na pré-Sessão 4 (decisões metodológicas a partir de avaliação de nota técnica externa).*
-*Reflete decisões metodológicas consolidadas; o histórico das discussões críticas está registrado no changelog do projeto (ver seção Pré-Sessão 4).*
+*Documento de arquitetura — atualizado na Subseção 4-B (reconstrução da view base: ponderação por peso amostral, correção de mapeamentos, reagrupamento de posição no domicílio, eixos territoriais).*
+*Reflete decisões metodológicas consolidadas; o histórico das discussões críticas está registrado no changelog do projeto (changelog_integrado.md).*
